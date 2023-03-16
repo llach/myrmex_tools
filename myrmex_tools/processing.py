@@ -1,7 +1,7 @@
 import numpy as np
 
 def _ensure_batch(d, data_dim=2):
-    if type(d) == list: d = np.array(d)
+    if type(d) == list: d = np.squeeze(d)
     if len(d.shape)==data_dim: d = np.expand_dims(d, axis=0)
     return d
 
