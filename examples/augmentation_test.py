@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
-from myrmex_tools import merge_left_right, single_frame_heatmap, random_shift_seq
+from myrmex_tools import merge_left_right, single_frame_heatmap, random_translation
 
 samples = []
 datadir = f"{os.environ['HOME']}/cloth/edge/"
@@ -19,7 +19,7 @@ for _ in range(5):
     fig, ax = plt.subplots(ncols=1, figsize=0.5*np.array([10,9]))
 
     # translate sample randomly
-    s = random_shift_seq([samples[1]], [True, True])
+    s = random_translation([samples[1]], [True, True])
 
     # overlay both myrmex frames and plot heatmap
     merged = merge_left_right(s)
