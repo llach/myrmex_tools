@@ -19,11 +19,6 @@ def upscale_repeat(frames, factor=10):
     frames = _ensure_batch(frames)
     return np.squeeze(frames.repeat(factor, axis=1).repeat(factor, axis=2))
 
-def merge_left_right(samples):
-    """ flip right sensor image, add left to it, normalize and rotate such that the z-axis points upwards and the x-axis to the right (to match sensor orientation in gripper)
-    """
-    return np.rot90((samples[0]+np.flip(samples[1], 1))/2, axes=(1,0))
-
 def single_frame_heatmap(sample, fig, ax):
     im = ax.imshow(sample, cmap="magma")
 

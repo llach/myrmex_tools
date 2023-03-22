@@ -36,3 +36,14 @@ def convert_tactile_message(data, B=0):
     """ wrapper for common preprocessing of myrmex data
     """
     return normalize_myrmex_data(remove_outer(reshape_myrmex_vector(data), B=B))
+
+
+def merge_left_right(data):
+    """ 
+    in:  (N,2,16,16)
+    out:   (N,16,16)
+
+    flip right sensor image, add left to it, normalize and rotate such that the z-axis points upwards and the x-axis to the right (to match sensor orientation in gripper)
+    """
+    data = _ensure_batch(data, data_dim=3)
+    return np.squeeze(np.rot90((data[:,0,:]+np.flip(data[:,1,:], 2))/2, axes=(2,1)))
