@@ -5,6 +5,12 @@ def _ensure_batch(d, data_dim=2):
     if len(d.shape)==data_dim: d = np.expand_dims(d, axis=0)
     return d
 
+def flatten_batch(d):
+    """ flattens batch dimensions while being agnostic to data dimensionality
+    """
+    d = np.array(d)
+    return np.reshape(d, (-1,)+d.shape[-2:])
+
 def remove_outer(data, B=0):
     """ removes B outermost rows & columns of myrmex data; expects batch 
     """

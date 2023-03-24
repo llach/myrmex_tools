@@ -2,7 +2,7 @@ import os
 import pickle
 import numpy as np
 
-from myrmex_tools import merge_left_right, single_frame_heatmap
+from myrmex_tools import merge_left_right, single_frame_heatmap, full_augment, flatten_batch
 
 dataset = {}
 datadir = f"{os.environ['HOME']}/cloth/"
@@ -24,18 +24,23 @@ for label in os.listdir(datadir):
 for label, samples in dataset.items():
     samples = np.array(samples)
     samples[:,1,:] = np.flip(samples[:,1,:], axis=2) # we still align left and right
-    dataset[label] = np.reshape(samples, (np.prod(samples.shape[:2]),16,16))
+    dataset[label] = flatten_batch(samples)
 
-import matplotlib.pyplot as plt
-fig, axes = plt.subplots(nrows=2, ncols=5, figsize=(10,5))
+# plot data to check whether dataset construction was done correctly
+# import matplotlib.pyplot as plt
+# fig, axes = plt.subplots(nrows=2, ncols=5, figsize=(10,5))
 
-for i, sample in enumerate(dataset["edge"]):
-    ridx, cidx = i%2, int(i/2)
-    single_frame_heatmap(sample, fig, axes[ridx,cidx], with_colorbar=False)
-    if ridx==0: axes[ridx,cidx].set_title(f"sample {cidx+1}")
+# for i, sample in enumerate(dataset["edge"]):
+#     ridx, cidx = i%2, int(i/2)
+#     single_frame_heatmap(sample, fig, axes[ridx,cidx], with_colorbar=False)
+#     if ridx==0: axes[ridx,cidx].set_title(f"sample {cidx+1}")
 
-axes[0,0].set_ylabel("left")
-axes[1,0].set_ylabel("right")
+# axes[0,0].set_ylabel("left")
+# axes[1,0].set_ylabel("right")
 
-fig.tight_layout()
-plt.show()
+# fig.tight_layout()
+# plt.show()
+
+# augment dataset
+for label, samples in dataset.items():
+    dataset[label] = flatten_batch([full_augment(s) for s in samples])
