@@ -19,13 +19,14 @@ def upscale_repeat(frames, factor=10):
     frames = _ensure_batch(frames)
     return np.squeeze(frames.repeat(factor, axis=1).repeat(factor, axis=2))
 
-def single_frame_heatmap(sample, fig, ax):
+def single_frame_heatmap(sample, fig, ax, with_colorbar=True):
     im = ax.imshow(sample, cmap="magma")
 
     # create colorbar
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax)
+    if with_colorbar:
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        fig.colorbar(im, cax=cax)
 
     # disabling  ticks makes things cleaner
     ax.set_xticks([])
