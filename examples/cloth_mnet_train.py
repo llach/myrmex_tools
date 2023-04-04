@@ -59,28 +59,42 @@ inputs  = np.vstack([v for v in dataset.values()])
 inputs  = np.expand_dims(inputs, axis=1)
 
 # generate class label vector, convert to indices, then to one-hot
-labels  =  np.concatenate([len(value)*[classes.index(key)] for key, value in dataset.items()])
-labels = torch.tensor(F.one_hot(torch.tensor(labels, dtype=torch.int64)), dtype=torch.float32)
+labels  = np.concatenate([len(value)*[classes.index(key)] for key, value in dataset.items()])
+labels  = torch.tensor(F.one_hot(torch.tensor(labels, dtype=torch.int64)), dtype=torch.float32)
+
+####
+## HYPERPARAMETERS
+####
+TRAIN_RATIO = 0.8
+BATCH_SIZE  = 16
+N_EPOCHS    = 40
+PRINT_FREQ  = 10
 
 # train-test-split
 tensor_ds = TensorDataset(torch.tensor(inputs, dtype=torch.float32), labels)
-
-N_train = int(len(tensor_ds)*0.8)
+N_train = int(len(tensor_ds)*TRAIN_RATIO)
 N_test = len(tensor_ds)-N_train
 train_ds, test_ds = random_split(
     tensor_ds, 
     [N_train, N_test]
 )
-trainloader = DataLoader(train_ds, shuffle=True, batch_size=16)
-testloader  = DataLoader(test_ds, shuffle=False, batch_size=16)
+trainloader = DataLoader(train_ds, shuffle=True, batch_size=BATCH_SIZE)
+testloader  = DataLoader(test_ds, shuffle=False, batch_size=BATCH_SIZE)
 
 # create network, loss and optimizer
 mnet = MyrmexNet()
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(mnet.parameters(), lr=0.001, momentum=0.9)
+optimizer = optim.Adam(
+    mnet.parameters(), 
+    lr=1e-3,
+    betas=(0.9, 0.999), 
+    eps=1e-8, 
+    weight_decay=0, 
+    amsgrad=False
+)
 
 # training loop
-for epoch in range(5):  # loop over the dataset multiple times
+for epoch in range(N_EPOCHS):  # loop over the dataset multiple times
 
     running_loss = 0.0
     for i, data in enumerate(trainloader, 0):
@@ -98,8 +112,8 @@ for epoch in range(5):  # loop over the dataset multiple times
 
         # print statistics
         running_loss += loss.item()
-        if i % 10 == 9: # print every 2000 mini-batches
-            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.5f}')
+        if i % PRINT_FREQ == PRINT_FREQ-1: # print every 2000 mini-batches
+            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / PRINT_FREQ:.5f}')
             running_loss = 0.0
 
 print('Finished Training')
