@@ -38,12 +38,22 @@ def plot_learning_curve(train_loss, test_loss, ax, min_test=None, min_test_i=0):
     ax.set_title("Myrmex Grasp Type Classification Network")
     ax.legend()
 
+def calculate_accuracy(outputs, labels):
+     return torch.mean(torch.tensor(
+        torch.all(
+            F.one_hot(
+                torch.argmax(outputs, axis=1), num_classes=labels.shape[-1]
+            )==labels
+        , axis=1), 
+    dtype=torch.float32))*100
+
 def test_net(model, crit, dataset):
     """ we evaluate the model on the whole test set and return outputs, labels and losses
     """
     losses = []
     outputs = []
     labels = []
+    accuracies = []
 
     model.eval()
     with torch.no_grad():
@@ -55,8 +65,9 @@ def test_net(model, crit, dataset):
             losses.append(loss_t.numpy())
             outputs.append(outs.numpy())
             labels.append(lbls.numpy())
+            accuracies.append(calculate_accuracy(outs, lbls).numpy())
     model.train()
-    return np.concatenate(outputs, axis=0), np.concatenate(labels, axis=0), np.concatenate(losses, axis=0)
+    return np.concatenate(outputs, axis=0), np.concatenate(labels, axis=0), np.concatenate(losses, axis=0), np.array(accuracies)
 
 dataset = {}
 datadir = f"{os.environ['HOME']}/cloth/"
@@ -152,6 +163,7 @@ train_accuracies = []
 
 min_test_loss = np.inf 
 test_losses   = []
+test_accuracies = []
 
 # code adapted from https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
 nbatch = 0
@@ -166,19 +178,23 @@ for epoch in range(N_EPOCHS):  # loop over the dataset multiple times
         # forward + backward + optimize
         outputs = mnet(inputs)
         loss = torch.mean(criterion(outputs, labels))
+        train_acc = calculate_accuracy(outputs, labels).numpy()
         loss.backward()
         optimizer.step()
 
         # store performance stats
         train_loss = loss.item()
         train_losses.append(train_loss)
+        train_accuracies.append(train_acc)
 
         # compute test loss on whole test set
-        test_out, test_lbl, test_loss = test_net(mnet, nn.CrossEntropyLoss(reduction="none"), testloader)
+        test_out, test_lbl, test_loss, test_acc = test_net(mnet, nn.CrossEntropyLoss(reduction="none"), testloader)
         test_losses.append(test_loss)
+        test_accuracies.append(test_acc)
 
         # new best average test loss? then store the weights
         test_avg = np.mean(test_losses[-N_TEST_AVG:])
+        test_acc = np.mean(test_accuracies[-N_TEST_AVG:])
         if len(test_losses) >= N_TEST_AVG and test_avg < min_test_loss:
             print(f"new best model with {test_avg:.5f}")
             torch.save(mnet.state_dict(), f"{weights_path}/best.pth")
@@ -186,7 +202,7 @@ for epoch in range(N_EPOCHS):  # loop over the dataset multiple times
             min_test_loss_i = nbatch
 
         nbatch += 1
-        print(f"[{epoch + 1}, {i + 1:5d}] train: {train_loss:.3f} | test: {np.mean(test_loss):.3f}", end="")
+        print(f"[{epoch + 1}, {i + 1:5d}] LOSS {train_loss:.3f}|{np.mean(test_loss):.3f} || ACC {train_acc:.2f}|{test_acc:.2f}", end="")
         print()
 
     # store model weights after every epoch
