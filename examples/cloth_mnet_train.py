@@ -12,6 +12,7 @@ from torch.utils.data import random_split, TensorDataset, DataLoader
 
 from datetime import datetime
 from myrmex_tools import full_augment, flatten_batch, MyrmexNet
+from sklearn.model_selection import train_test_split
 
 def plot_curve_and_variance(data, ax, perc=80, mean_label="", perc_label=""):
     """ given 2D data array, plot mean and percentiles, respecting special case where lower=upper percentile
@@ -99,14 +100,18 @@ def test_net(model, crit, dataset):
     model.train()
     return np.concatenate(outputs, axis=0), np.concatenate(labels, axis=0), np.concatenate(losses, axis=0), np.array(accuracies)
 
-if __name__ == "__main__":
-    dataset = {}
-    datadir = f"{os.environ['HOME']}/cloth/"
+def load_and_preprocess_data(datadir):
+    """
+    read dataset from path.
+    returns:
 
+    - samples (N, 1, W, H)
+    - labels  (indices of class)
+    - classes (list of class names)
     """
-    STEP I: read data
-    """
-    # iterate over class folders
+    dataset = {}
+
+    # read data: iterate over class folders
     for label in os.listdir(datadir):
         if label == ".DS_Store": continue
         dataset.update({label: []})
@@ -115,9 +120,8 @@ if __name__ == "__main__":
             if fname in ["pics", ".DS_Store"]: continue # skip directory containing visulizations and macOS bloat
             with open(f"{datadir}{label}/{fname}", "rb") as f: dataset[label].append(pickle.load(f)["mm"])
 
-    """
-    STEP II: preprocess data
-    """
+   
+    # preprocess data, either merge or use left/right samples individually
     # OPTION I) merge all samples of each class
     # for label, samples in dataset.items():
     #     dataset[label] = merge_left_right(samples)
@@ -128,49 +132,67 @@ if __name__ == "__main__":
         samples[:,1,:] = np.flip(samples[:,1,:], axis=2) # we still align left and right
         dataset[label] = flatten_batch(samples)
 
-    """
-    STEP III: augment data
-    """
-
-    # augment dataset
-    print("dataset size:")
-    for label, samples in dataset.items():
-        dataset[label] = flatten_batch([full_augment(s) for s in samples])
-        print(f"\t{label}: {len(dataset[label])}")
-
-    """
-    STEP IV: prepare Torch dataset, create network
-    """
     # classes are the dict's keys
     classes = list(dataset.keys())
 
-    # stack inputs, add channel dimension for conv2d
-    inputs  = np.vstack([v for v in dataset.values()])
-    inputs  = np.expand_dims(inputs, axis=1)
+    # stack inputs
+    samples = np.vstack([v for v in dataset.values()])
 
     # generate class label vector, convert to indices, then to one-hot
-    labels  = np.concatenate([len(value)*[classes.index(key)] for key, value in dataset.items()])
-    labels  = torch.tensor(F.one_hot(torch.tensor(labels, dtype=torch.int64)), dtype=torch.float32)
+    labels = np.concatenate([len(value)*[classes.index(key)] for key, value in dataset.items()])
+    
+    return samples, labels, classes
 
+def augment_dataset(samples, labels):
+    X, y = [], []
+    for sample, label in zip(samples, labels):
+        X.append(full_augment(sample))
+        y.append(len(X[-1])*[label])
+    return flatten_batch(X), np.reshape(y, (-1))
+
+def create_dataloader(X, y, shuffle=True, batch_size=32):
+    return DataLoader(
+        TensorDataset(
+            torch.tensor(X, dtype=torch.float32), 
+            torch.tensor(F.one_hot(torch.tensor(y, dtype=torch.int64)), dtype=torch.float32)
+        ),  
+        shuffle=shuffle,  batch_size=batch_size)
+
+if __name__ == "__main__":
     ####
     ## HYPERPARAMETERS
     ####
+    DATA_DIR    = f"{os.environ['HOME']}/cloth/"
     STORE_PATH  = f"{os.environ['HOME']}/cloth_trainings/"
-    TRAIN_RATIO = 0.8
+    TEST_RATIO  = 0.2
     BATCH_SIZE  = 16
     N_EPOCHS    = 40
     N_TEST_AVG  = 5
+    SEED        = np.random.randint(low=0, high=2**32 - 1) 
+    # SEED        = 123
 
-    # train-test-split
-    tensor_ds = TensorDataset(torch.tensor(inputs, dtype=torch.float32), labels)
-    N_train = int(len(tensor_ds)*TRAIN_RATIO)
-    N_test = len(tensor_ds)-N_train
-    train_ds, test_ds = random_split(
-        tensor_ds, 
-        [N_train, N_test]
-    )
-    trainloader = DataLoader(train_ds, shuffle=True, batch_size=BATCH_SIZE)
-    testloader  = DataLoader(test_ds, shuffle=False, batch_size=BATCH_SIZE)
+    """
+    STEP I: load data
+    """
+    samples, labels, classes = load_and_preprocess_data(DATA_DIR)
+
+    """
+    STEP II: split & augment data
+    """
+    X_train, X_test, y_train, y_test = train_test_split(samples, labels, test_size=TEST_RATIO, random_state=SEED)
+    
+    # augment dataset
+    X_train_aug, y_train_aug = augment_dataset(X_train, y_train)
+    X_test_aug,  y_test_aug  = augment_dataset(X_test, y_test)
+
+    X_train_aug = np.expand_dims(X_train_aug, axis=1)
+    X_test_aug = np.expand_dims(X_test_aug, axis=1)
+
+    """
+    STEP III: prepare Torch dataset, create network
+    """
+    trainloader = create_dataloader(X_train_aug, y_train_aug, shuffle=True,  batch_size=BATCH_SIZE)
+    testloader  = create_dataloader(X_test_aug,  y_test_aug,  shuffle=False, batch_size=BATCH_SIZE)
 
     # create network, loss and optimizer
     mnet = MyrmexNet()
