@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 from torch import nn
 from torch.nn import functional as F
-from torch.utils.data import random_split, TensorDataset, DataLoader
+from torch.utils.data import TensorDataset, DataLoader
 
 from datetime import datetime
 from myrmex_tools import full_augment, flatten_batch, MyrmexNet
@@ -67,7 +67,6 @@ def plot_learning_curve(train_loss, test_loss, train_acc, test_acc, ax, min_test
     lines, labels = ax.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax2.legend(lines + lines2, labels + labels2, loc="center right")
-    # ax.legend(loc="center right")
 
 def calculate_accuracy(outputs, labels):
      return torch.mean(torch.tensor(
@@ -166,7 +165,7 @@ if __name__ == "__main__":
     STORE_PATH  = f"{os.environ['HOME']}/cloth_trainings/"
     TEST_RATIO  = 0.2
     BATCH_SIZE  = 16
-    N_EPOCHS    = 40
+    N_EPOCHS    = 40 
     N_TEST_AVG  = 5
     SEED        = np.random.randint(low=0, high=2**32 - 1) 
     # SEED        = 123
