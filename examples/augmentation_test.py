@@ -13,7 +13,22 @@ datadir = f"{os.environ['HOME']}/cloth/edge/"
 # load "edge" samples from the cloth dataset
 for fname in os.listdir(datadir):
     if fname in ["pics", ".DS_Store"]: continue # skip directory containing visulizations and macOS bloat
-    with open(f"{datadir}{fname}", "rb") as f: samples.append(pickle.load(f)["mm"])
+    with open(f"{datadir}{fname}", "rb") as f: 
+        """
+        each sample is of format:
+
+        sample {
+            mm: timestamp: tactile_images # shape (2,16,16)
+            joints { # gripper finger joint positions (in meters)
+                gripper_right_finger_joint: float
+                gripper_left_finger_joint:  float
+                ..
+            },
+            ft: force-torque measurement # shape (6,)
+            Qwg: quaternion of rotation base to gripper # shape (4,)
+        }
+        """
+        samples.append(pickle.load(f)["mm"])
 
 # show random variations of the input sample
 s = np.array(samples[1])
